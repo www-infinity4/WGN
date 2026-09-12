@@ -69,9 +69,9 @@
         sourceStart:0, stationStart:0, duration:Math.min(runtime,block.blockSeconds)
       });
     }
-    if (runtime < block.blockSeconds) {
+    if (runtime < block.blockSeconds && block.movie.videoId && block.movie.cleared) {
       segments.push({
-        kind:"station", title:"Coming up next", videoId:"", cleared:true,
+        kind:"program", title:block.movie.title, videoId:block.movie.videoId, cleared:true,
         sourceStart:0, stationStart:runtime, duration:block.blockSeconds-runtime
       });
     }
