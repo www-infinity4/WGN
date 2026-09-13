@@ -24,14 +24,7 @@
     let guess = target;
     for (let i = 0; i < 4; i += 1) {
       const parts = stationParts(new Date(guess));
-      const represented = Date.UTC(
-        parts.year,
-        parts.month - 1,
-        parts.day,
-        parts.hour,
-        parts.minute,
-        parts.second
-      );
+      const represented = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
       guess += target - represented;
     }
     return guess;
@@ -44,9 +37,7 @@
 
   function hash(text) {
     let value = 2166136261;
-    for (let i = 0; i < text.length; i += 1) {
-      value = Math.imul(value ^ text.charCodeAt(i), 16777619);
-    }
+    for (let i = 0; i < text.length; i += 1) value = Math.imul(value ^ text.charCodeAt(i), 16777619);
     return value >>> 0;
   }
 
@@ -54,7 +45,9 @@
     if (!choices.length) return null;
     const dateParts = String(key).split("-").map(Number);
     const dayNumber = Math.floor(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2]) / 86400000);
-    return choices[((dayNumber + index) % choices.length + choices.length) % choices.length];
+    const weekNumber = Math.floor(dayNumber / 7);
+    const weeklyOffset = hash(`wgn-week-v2:${weekNumber}:${index}`) % choices.length;
+    return choices[((dayNumber + index + weeklyOffset) % choices.length + choices.length) % choices.length];
   }
 
   function createDaySchedule(nowMs, programs, template) {
@@ -79,36 +72,12 @@
     const runtime = Math.min(block.movie.runtimeSeconds || block.blockSeconds, block.blockSeconds);
     const segments = [];
     if (block.movie.videoId && block.movie.cleared) {
-      segments.push({
-        kind: "program",
-        title: block.movie.title,
-        videoId: block.movie.videoId,
-        cleared: true,
-        sourceStart: 0,
-        stationStart: 0,
-        duration: runtime
-      });
+      segments.push({kind:"program",title:block.movie.title,videoId:block.movie.videoId,cleared:true,sourceStart:0,stationStart:0,duration:runtime});
     } else {
-      segments.push({
-        kind: "station",
-        title: block.movie.title,
-        videoId: "",
-        cleared: false,
-        sourceStart: 0,
-        stationStart: 0,
-        duration: Math.min(runtime, block.blockSeconds)
-      });
+      segments.push({kind:"station",title:block.movie.title,videoId:"",cleared:false,sourceStart:0,stationStart:0,duration:Math.min(runtime, block.blockSeconds)});
     }
     if (runtime < block.blockSeconds) {
-      segments.push({
-        kind: "station",
-        title: "Station break — next program starts on schedule",
-        videoId: "",
-        cleared: true,
-        sourceStart: 0,
-        stationStart: runtime,
-        duration: block.blockSeconds - runtime
-      });
+      segments.push({kind:"station",title:"Station break — next program starts on schedule",videoId:"",cleared:true,sourceStart:0,stationStart:runtime,duration:block.blockSeconds-runtime});
     }
     return segments;
   }
@@ -116,33 +85,12 @@
   function resolve(nowMs, schedule) {
     let block = schedule.find(item => nowMs >= item.startsAtMs && nowMs < item.endsAtMs);
     if (!block) block = nowMs < schedule[0].startsAtMs ? schedule[0] : schedule[schedule.length - 1];
-    const blockElapsed = Math.max(
-      0,
-      Math.min(block.blockSeconds - 1, Math.floor((nowMs - block.startsAtMs) / 1000))
-    );
+    const blockElapsed = Math.max(0, Math.min(block.blockSeconds - 1, Math.floor((nowMs - block.startsAtMs) / 1000)));
     const segments = createSegments(block);
-    const segment = segments.find(
-      item => blockElapsed >= item.stationStart && blockElapsed < item.stationStart + item.duration
-    ) || segments[segments.length - 1];
+    const segment = segments.find(item => blockElapsed >= item.stationStart && blockElapsed < item.stationStart + item.duration) || segments[segments.length - 1];
     const segmentElapsed = Math.max(0, blockElapsed - segment.stationStart);
-    return {
-      block,
-      segment,
-      segmentElapsed,
-      blockElapsed,
-      mediaSeconds: segment.sourceStart + segmentElapsed,
-      segmentRemaining: Math.max(0, segment.duration - segmentElapsed),
-      blockRemaining: Math.max(0, block.blockSeconds - blockElapsed)
-    };
+    return {block,segment,segmentElapsed,blockElapsed,mediaSeconds:segment.sourceStart+segmentElapsed,segmentRemaining:Math.max(0,segment.duration-segmentElapsed),blockRemaining:Math.max(0,block.blockSeconds-blockElapsed)};
   }
 
-  root.WGNEngine = {
-    TIME_ZONE,
-    stationParts,
-    zonedToUtc,
-    dateKey,
-    createDaySchedule,
-    createSegments,
-    resolve
-  };
+  root.WGNEngine = {TIME_ZONE,stationParts,zonedToUtc,dateKey,createDaySchedule,createSegments,resolve};
 })(window);
