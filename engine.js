@@ -1,7 +1,7 @@
 (function (root) {
   "use strict";
 
-  const TIME_ZONE = "America/Chicago";
+  const TIME_ZONE = (Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago");
 
   function stationParts(date) {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -50,9 +50,11 @@
     return value >>> 0;
   }
 
-  function pickChoice(choices, dayKey, index) {
+  function pickChoice(choices, key, index) {
     if (!choices.length) return null;
-    return choices[hash(`${dayKey}:${index}`) % choices.length];
+    const dateParts = String(key).split("-").map(Number);
+    const dayNumber = Math.floor(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2]) / 86400000);
+    return choices[((dayNumber + index) % choices.length + choices.length) % choices.length];
   }
 
   function createDaySchedule(nowMs, programs, template) {
